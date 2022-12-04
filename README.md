@@ -16,5 +16,8 @@ Used classes and components:
 * TVirtualStringView (3rd party) for nice data display
 * TThread to perform operation in thread
 
-## Delphi
+To start data collection you should click "Start" button.
+Next requests are made automatically according to the settings
+
+## Delphi version
 Written in version 10.4, must compile in XE2 and newer.
