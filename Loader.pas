@@ -275,6 +275,9 @@ end;
 
 procedure TLoader.Execute;
 begin
+  {$IFDEF DEBUG}
+    NameThreadForDebugging('SQL-Loader-Thread');
+  {$ENDIF}
   // первоначальная загрузка данных
   // ждем команды стартовать
   StartEvent.WaitFor(INFINITE);

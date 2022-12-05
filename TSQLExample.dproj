@@ -102,7 +102,9 @@
         <DCCReference Include="MainForm.pas">
             <Form>FmMain</Form>
         </DCCReference>
-        <DCCReference Include="Loader.pas"/>
+        <DCCReference Include="Loader.pas">
+            <Form>$R *.res</Form>
+        </DCCReference>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>
