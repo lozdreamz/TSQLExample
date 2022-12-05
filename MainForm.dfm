@@ -21,7 +21,7 @@ object FmMain: TFmMain
     Height = 41
     Align = alTop
     TabOrder = 0
-    ExplicitWidth = 793
+    ExplicitWidth = 795
     object BtnStart: TButton
       Left = 24
       Top = 8
@@ -86,8 +86,9 @@ object FmMain: TFmMain
     Header.Options = [hoColumnResize, hoDrag, hoShowSortGlyphs, hoVisible]
     TabOrder = 1
     TreeOptions.MiscOptions = [toAcceptOLEDrop, toFullRepaintOnResize, toGridExtensions, toInitOnSave, toToggleOnDblClick, toWheelPanning, toEditOnClick]
-    TreeOptions.PaintOptions = [toShowButtons, toShowDropmark, toShowHorzGridLines, toShowRoot, toShowVertGridLines, toThemeAware, toUseBlendedImages]
+    TreeOptions.PaintOptions = [toHideSelection, toShowButtons, toShowDropmark, toShowHorzGridLines, toShowRoot, toShowVertGridLines, toThemeAware, toUseBlendedImages]
     TreeOptions.SelectionOptions = [toFullRowSelect]
+    OnBeforeCellPaint = VSTreeBeforeCellPaint
     OnChange = VSTreeChange
     OnFocusChanged = VSTreeFocusChanged
     OnFreeNode = VSTreeFreeNode
@@ -128,8 +129,8 @@ object FmMain: TFmMain
     Align = alRight
     Caption = 'Settings:'
     TabOrder = 2
-    ExplicitLeft = 627
-    ExplicitHeight = 327
+    ExplicitLeft = 629
+    ExplicitHeight = 335
     object LbInterval: TLabel
       Left = 6
       Top = 204
@@ -224,8 +225,8 @@ object FmMain: TFmMain
       item
         Width = 50
       end>
-    ExplicitTop = 368
-    ExplicitWidth = 793
+    ExplicitTop = 376
+    ExplicitWidth = 795
   end
   object ADOQuery: TADOQuery
     Connection = ADOCnxn
@@ -234,10 +235,6 @@ object FmMain: TFmMain
     Top = 56
   end
   object ADOCnxn: TADOConnection
-    ConnectionString = 
-      'Provider=SQLOLEDB.1;Password=<YourStrong@Passw0rd>;Persist Secur' +
-      'ity Info=True;User ID=SA;Initial Catalog=TestDB;Data Source=loca' +
-      'lhost'
     LoginPrompt = False
     Mode = cmShareDenyNone
     Provider = 'SQLOLEDB.1'
