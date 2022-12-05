@@ -2,7 +2,8 @@ program TSQLExample;
 
 uses
   Vcl.Forms,
-  MainForm in 'MainForm.pas' {FmMain};
+  MainForm in 'MainForm.pas' {FmMain},
+  Loader in 'Loader.pas';
 
 {$R *.res}
 
