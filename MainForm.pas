@@ -3,10 +3,11 @@
 interface
 
 uses
-  System.SysUtils, System.Classes, System.UITypes, System.IniFiles, System.SyncObjs,
-  Vcl.Controls, Vcl.Forms, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.Graphics,
-  Vcl.Grids, Vcl.DBCtrls, Vcl.DBGrids, Data.DB, Data.Win.ADODB,
-  VirtualTrees, Vcl.Samples.Spin, Vcl.Dialogs, Vcl.ComCtrls, Vcl.Mask;
+  System.Classes, System.IniFiles, System.SyncObjs,
+  Vcl.Forms, Vcl.Controls, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls,
+  Vcl.Samples.Spin, Vcl.Mask,
+  Data.DB, Data.Win.ADODB,
+  VirtualTrees;
 
 type
   TNodeType = (ntObject, ntObjectValue);
@@ -114,6 +115,9 @@ var
   t: TRequestThread;
 
 implementation
+
+uses
+  System.SysUtils, Vcl.Graphics, Vcl.Dialogs;
 
 {$R *.dfm}
 
@@ -259,10 +263,7 @@ var
 begin
   // вначале проверить на пустоту
   if (EdHost.Text = '') or (EdDatabase.Text = '') or (EdUser.Text = '') then
-    begin
-      ShowMessage('Не все обязательные поля заполнены');
-      Exit;
-    end;
+    Exit;
   // все ок, сначала отсоединиться от сервера
   ADOCnxn.Close;
   // установить параметры
