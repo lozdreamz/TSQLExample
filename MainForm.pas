@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Classes, System.IniFiles, System.SyncObjs,
+  System.Classes, System.Types, System.IniFiles, System.SyncObjs,
   Vcl.Forms, Vcl.Controls, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Samples.Spin, Vcl.Mask,
   Data.DB, Data.Win.ADODB,
@@ -68,6 +68,9 @@ type
     procedure BtnUpdateClick(Sender: TObject);
     procedure BtnExpandClick(Sender: TObject);
     procedure BtnCollapseClick(Sender: TObject);
+    procedure VSTreeBeforeCellPaint(Sender: TBaseVirtualTree;
+      TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
+      CellPaintMode: TVTCellPaintMode; CellRect: TRect; var ContentRect: TRect);
   private
     { Private declarations }
   public
@@ -182,7 +185,7 @@ begin
   // добавить узел и прописать данные Объекта
   Synchronize(procedure
     begin
-      XNode := FmMain.VSTree.AddChild(fmMain.vstree.RootNode);
+      XNode := FmMain.VSTree.AddChild(FmMain.VSTree.RootNode);
       Data := FmMain.VSTree.GetNodeData(XNode);
       Data.NodeType := ntObject;
       Data.Id := Id;
@@ -358,6 +361,21 @@ begin
   ApplyConfig;
 end;
 
+// окрашивание строк с объектами
+procedure TFmMain.VSTreeBeforeCellPaint(Sender: TBaseVirtualTree;
+  TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
+  CellPaintMode: TVTCellPaintMode; CellRect: TRect; var ContentRect: TRect);
+var
+  Data: PTreeNode;
+begin
+  Data := VSTree.GetNodeData(Node);
+  if Data.NodeType = ntObject then
+    begin
+      TargetCanvas.Brush.Color := clAppWorkSpace;
+      TargetCanvas.FillRect(CellRect);
+    end;
+end;
+
 procedure TFmMain.VSTreeChange(Sender: TBaseVirtualTree; Node: PVirtualNode);
 begin
   VSTree.Refresh;
@@ -373,7 +391,7 @@ procedure TFmMain.VSTreeFreeNode(Sender: TBaseVirtualTree; Node: PVirtualNode);
 var
   Data: PTreeNode;
 begin
-  Data := vstree.GetNodeData(Node);
+  Data := VSTree.GetNodeData(Node);
   if Assigned(Data) then
     begin
         // хоть строки и освобождаются автоматически,
@@ -387,7 +405,7 @@ end;
 procedure TFmMain.VSTreeGetNodeDataSize(Sender: TBaseVirtualTree;
   var NodeDataSize: Integer);
 begin
-  NodeDataSize := SizeOf(TTreeNode)
+  NodeDataSize := SizeOf(TTreeNode);
 end;
 
 // определение текста узла VirtualStringTree
@@ -397,7 +415,7 @@ var
   Data: PTreeNode;
 begin
   CellText := '';
-  Data := vstree.GetNodeData(Node);
+  Data := VSTree.GetNodeData(Node);
   // для объектов выводить только id: name, comment в первой ячейке
   if Data.NodeType = ntObject then
     begin
