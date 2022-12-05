@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Classes, System.Types, System.IniFiles,
+  System.Classes, System.SysUtils, System.Types, System.IniFiles,
   Vcl.Forms, Vcl.Controls, Vcl.ComCtrls, Vcl.StdCtrls, Vcl.ExtCtrls,
   Vcl.Samples.Spin, Vcl.Mask,
   Data.DB, Data.Win.ADODB,
@@ -27,6 +27,16 @@ type
     Value1: Integer;
     Value2: String;
     Value3: Double;
+  end;
+
+  TLogger = class
+  private
+    FFormatSettings: TFormatSettings;
+    FLogFileStream: TFileStream;
+  public
+    constructor Create(LogPath: String);
+    destructor Destroy; override;
+    procedure Log(Text: String; SetTimeStamp: Boolean = True);
   end;
 
   TFmMain = class(TForm)
@@ -71,8 +81,6 @@ type
     procedure VSTreeBeforeCellPaint(Sender: TBaseVirtualTree;
       TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
       CellPaintMode: TVTCellPaintMode; CellRect: TRect; var ContentRect: TRect);
-  private
-    { Private declarations }
   public
     // ini-файл для хранения настроек
     ConfigFile: TIniFile;
@@ -89,11 +97,12 @@ var
 implementation
 
 uses
-  System.SysUtils, Vcl.Graphics, Vcl.Dialogs,
+  Vcl.Graphics, Vcl.Dialogs,
   Loader;
 
 var
   t: TLoader;
+  l: TLogger;
 
 {$R *.dfm}
 
@@ -218,11 +227,14 @@ end;
 procedure TFmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   ConfigFile.Free;
+  l.Free;
   if Assigned(t) and t.Started then
     begin
       // разбудить и убить поток
       t.UpdateEvent.SetEvent;
       t.Terminate;
+//      t.WaitFor;
+//      t.Free;
     end;
 end;
 
@@ -233,7 +245,8 @@ begin
   AppPath := ExtractFilePath(Application.ExeName);
   ConfigFile := TIniFile.Create(AppPath + 'config.ini');
   LogPath := AppPath + 'log.txt';
-  t := TLoader.Create(0, LogPath);
+  l := TLogger.Create(LogPath);
+  t := TLoader.Create(0, l);
   LoadConfig;
   ApplyConfig;
 end;
@@ -273,9 +286,9 @@ begin
     begin
         // хоть строки и освобождаются автоматически,
         // если их не обнулить, будет утечка
-        Data^.Name := '';
-        Data^.Comment := '';
-        Data^.Value2 := '';
+        Data.Name := '';
+        Data.Comment := '';
+        Data.Value2 := '';
     end;
 end;
 
@@ -323,6 +336,46 @@ begin
       TargetCanvas.Font.Style := TargetCanvas.Font.Style + [fsBold];
     end;
 
+end;
+
+{ TLogger }
+
+constructor TLogger.Create(LogPath: String);
+var
+  Mode: Word;
+begin
+  // create or open log file and seek to end
+  if FileExists(LogPath) then
+    Mode := fmShareDenyWrite or fmOpenWrite
+  else
+    Mode := fmShareDenyWrite or fmCreate;
+  FLogFileStream := TFileStream.Create(LogPath,  Mode);
+  FLogFileStream.Seek(0, soFromEnd);
+  // set timestamp format
+  FFormatSettings.ShortDateFormat := 'yyyy-mm-dd';
+  FFormatSettings.LongTimeFormat := 'hh:nn:ss:zzz';
+  FFormatSettings.DateSeparator := '-';
+  FFormatSettings.TimeSeparator := ':';
+end;
+
+destructor TLogger.Destroy;
+begin
+  FreeAndNil(FLogFileStream);
+end;
+
+procedure TLogger.Log(Text: String; SetTimeStamp: Boolean = True);
+var
+  TimeStamp: String;
+  w: TStreamWriter;
+begin
+   // divider
+   if Text = '--' then
+     Text := '---------------------------------------------------';
+   if SetTimeStamp then
+     Text := DateTimeToStr(Now, FFormatSettings) + ': ' + Text;
+   w := TStreamWriter.Create(FLogFileStream, TEncoding.UTF8);
+   w.WriteLine(Text);
+   w.Free;
 end;
 
 end.

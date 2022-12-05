@@ -3,7 +3,8 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs;
+  System.Classes, System.SyncObjs,
+  MainForm;
 
 type
   TLoader = class(TThread)
@@ -12,8 +13,7 @@ type
     FLastVersion: Integer;
     // интервал обновления
     FInterval: Cardinal;
-    // стрим для лог-файла
-    FLogFileStream: TFileStream;
+    FLogger: TLogger;
     // небольшая функция запроса номера последнего изменения
     function GetCurrentVersion: Word;
     // процедуры добавления записи, полученной из базы, в дерево
@@ -22,6 +22,7 @@ type
     // процедуры первоначального и повтороного получения данных
     procedure GetInitialData;
     procedure GetChanges;
+    procedure Log(Text: String; SetTimeStamp: Boolean = True);
   protected
     procedure Execute; override;
     // сеттер интервала
@@ -30,42 +31,14 @@ type
     // события, при установке которых что-то делает
     StartEvent, UpdateEvent: TEvent;
     property Interval: Cardinal write SetInterval;
-    constructor Create(Interval: Cardinal; LogPath: String);
+    constructor Create(Interval: Cardinal; Logger: TLogger = nil);
     destructor Destroy; override;
-    // процедура записи строки в лог
-    procedure Log(Text: String; SetTimeStamp: Boolean = True);
   end;
 
 implementation
 
 uses
-  System.SysUtils, VirtualTrees,
-  MainForm;
-
-// добавление записи в лог-файл
-// параметры: выводимый текст, необходимость временной метки
-procedure TLoader.Log(Text: String; SetTimeStamp: Boolean = True);
-var
-  fs: TFormatSettings;
-  TimeStamp: String;
-  w: TStreamWriter;
-begin
-   // запись в лог-файл с временной меткой или без
-   fs.ShortDateFormat := 'yyyy-mm-dd';
-   fs.LongTimeFormat := 'hh:nn:ss:zzz';
-   fs.DateSeparator := '-';
-   fs.TimeSeparator := ':';
-   TimeStamp := DateTimeToStr(Now, fs);
-   // разделитель
-   if Text = '--' then
-     Text := '---------------------------------------------------';
-   if SetTimeStamp then
-     Text := TimeStamp + ': ' + Text;
-   // StreamWriter корректно пишет строки
-   w := TStreamWriter.Create(FLogFileStream, TEncoding.UTF8);
-   w.WriteLine(Text);
-   w.Free;
-end;
+  System.SysUtils, VirtualTrees;
 
 // добавление записи test_Object, полученной из базы, в дерево
 // параметры: поля id, name и comment объекта, нужно ли выделять
@@ -87,8 +60,7 @@ begin
       if Select then
         fmMain.vstree.Selected[XNode] := True;
     end);
-  // логгировать
-  Log('Получен объект ' + IntTostr(Id) + ' - name: ' + Name + ', comment: ' + Comment);
+    Log('Получен объект ' + IntTostr(Id) + ' - name: ' + Name + ', comment: ' + Comment);
 end;
 
 // добавление записи test_ObjectValue, полученной из базы, в дерево
@@ -131,28 +103,24 @@ begin
       if Select then
         FmMain.VSTree.Selected[XNode] := True;
     end);
-  // логгировать
+  // write to log
   Log('Получены даные для объекта ' + IntTostr(ObjId));
-  // вторую строчку с отступом в несколько табов
+  // second row with some tabs ahead
   Log(#9#9#9#9 + '[' + DateTimeToStr(DT) + '] value1: ' + IntToStr(Value1) + ', value2: ' +
       Value2 + ', value3: ' + FloatToStr(Value3), False);
 end;
 
-constructor TLoader.Create(Interval: Cardinal; LogPath: String);
+constructor TLoader.Create(Interval: Cardinal; Logger: TLogger = nil);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
+  if Assigned(Logger) then
+    FLogger := Logger;
   // в конструкторе устанавливается интервал
   FInterval := Interval;
   // инициализируются события (автосброс, отключенное)
   StartEvent := TEvent.Create(nil, False, False, '');
   UpdateEvent := TEvent.Create(nil, False, False, '');
-  // создаётся/открывается лог-файл (с промоткой до конца)
-  if FileExists(LogPath) then
-    FLogFileStream := TFileStream.Create(LogPath,  fmOpenWrite or fmShareDenyWrite)
-  else
-    FLogFileStream := TFileStream.Create(LogPath,  fmCreate or fmShareDenyWrite);
-  FLogFileStream.Seek(0, soFromEnd);
   Log('--', False);
   Log('Программа запущена');
 end;
@@ -161,7 +129,6 @@ destructor TLoader.Destroy;
 begin
   StartEvent.Free;
   UpdateEvent.Free;
-  FreeAndNil(FLogFileStream);
   inherited;
 end;
 
@@ -234,8 +201,8 @@ end;
 
 procedure TLoader.GetInitialData;
 begin
-  Log('--', False);
-  Log('Первоначальная загрузка данных');
+  FLogger.Log('--', False);
+  FLogger.Log('Первоначальная загрузка данных');
   with FmMain.ADOQuery do
     begin
       // сохранить текущую версию
@@ -271,6 +238,12 @@ begin
         // показать номер транзакции
         FmMain.StatusBar.Panels[2].Text := 'Transaction: ' + IntToStr(FLastVersion);
       end);
+end;
+
+procedure TLoader.Log(Text: String; SetTimeStamp: Boolean);
+begin
+  if Assigned(FLogger) then
+    FLogger.Log(Text, SetTimeStamp);
 end;
 
 procedure TLoader.Execute;
