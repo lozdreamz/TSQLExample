@@ -3,7 +3,7 @@
 interface
 
 uses
-  System.Classes, System.SyncObjs,
+  System.Classes, System.SyncObjs, Data.DB, Win.ADODB,
   MainForm;
 
 type
@@ -14,10 +14,11 @@ type
     // интервал обновления
     FInterval: Cardinal;
     FLogger: TLogger;
+    FQuery: TADOQuery;
     // небольшая функция запроса номера последнего изменения
     function GetCurrentVersion: Word;
     // процедуры добавления записи, полученной из базы, в дерево
-    procedure AddObject(Id: Integer; Name, Comment: String; Select: Boolean = False);
+    procedure AddObject(F: TFields; Select: Boolean = False);
     procedure AddValue(ObjId: Integer; DT: TDateTime; Value1: Integer; Value2: String; Value3: Double; Select: Boolean = False);
     // процедуры первоначального и повтороного получения данных
     procedure GetInitialData;
@@ -31,7 +32,7 @@ type
     // события, при установке которых что-то делает
     StartEvent, UpdateEvent: TEvent;
     property Interval: Cardinal write SetInterval;
-    constructor Create(Interval: Cardinal; Logger: TLogger = nil);
+    constructor Create(ADOQuery: TADOQuery; Interval: Cardinal; Logger: TLogger = nil);
     destructor Destroy; override;
   end;
 
@@ -41,8 +42,8 @@ uses
   System.SysUtils, VirtualTrees;
 
 // добавление записи test_Object, полученной из базы, в дерево
-// параметры: поля id, name и comment объекта, нужно ли выделять
-procedure TDataLoader.AddObject(Id: Integer; Name, Comment: String; Select: Boolean = False);
+// параметры: строка таблицы
+procedure TDataLoader.AddObject(F: TFields; Select: Boolean = False);
 var
   Data: PTreeNode;
   XNode: PVirtualNode;
@@ -53,14 +54,14 @@ begin
       XNode := FmMain.VSTree.AddChild(FmMain.VSTree.RootNode);
       Data := FmMain.VSTree.GetNodeData(XNode);
       Data.NodeType := ntObject;
-      Data.Id := Id;
-      Data.Name := Name;
-      Data.Comment := Comment;
+      Data.Id := F.FieldByName('id').AsInteger;
+      Data.Name := F.FieldByName('name').AsString;
+      Data.Comment := F.FieldByName('comment').AsString;
       // и перевести фокус
       if Select then
         fmMain.vstree.Selected[XNode] := True;
     end);
-    Log('Получен объект ' + IntTostr(Id) + ' - name: ' + Name + ', comment: ' + Comment);
+//    Log('Получен объект ' + IntTostr(Id) + ' - name: ' + Name + ', comment: ' + Comment);
 end;
 
 // добавление записи test_ObjectValue, полученной из базы, в дерево
@@ -110,13 +111,13 @@ begin
       Value2 + ', value3: ' + FloatToStr(Value3), False);
 end;
 
-constructor TDataLoader.Create(Interval: Cardinal; Logger: TLogger = nil);
+constructor TDataLoader.Create(ADOQuery: TADOQuery; Interval: Cardinal; Logger: TLogger = nil);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
   if Assigned(Logger) then
     FLogger := Logger;
-  // в конструкторе устанавливается интервал
+  FQuery := ADOQuery;
   FInterval := Interval;
   // инициализируются события (автосброс, отключенное)
   StartEvent := TEvent.Create(nil, False, False, '');
@@ -151,8 +152,7 @@ begin
         end);
       while not Eof do
         begin
-          AddObject(FieldByName('id').AsInteger, FieldByName('name').AsString,
-                    FieldByName('comment').AsString, True);
+          AddObject(Fields);
           Next;
         end;
       // потом обновить инфу о значениях
@@ -187,52 +187,46 @@ end;
 // возвращает: номер текущей версии
 function TDataLoader.GetCurrentVersion: Word;
 begin
-  with FmMain.ADOQuery do
-    begin
-      SQL.Clear;
-      // получения номера последнего изменения
-      // то есть номер последней зафиксированной транзакции
-      SQL.Add('SELECT CHANGE_TRACKING_CURRENT_VERSION();');
-      Active := True;
-      Result := Fields[0].AsInteger;
-      Active := False;
-    end;
+  FQuery.SQL.Clear;
+  // получения номера последнего изменения
+  // то есть номер последней зафиксированной транзакции
+  FQuery.SQL.Add('SELECT CHANGE_TRACKING_CURRENT_VERSION();');
+  FQuery.Active := True;
+  Result := FQuery.Fields[0].AsInteger;
 end;
 
 procedure TDataLoader.GetInitialData;
 begin
   FLogger.Log('--', False);
   FLogger.Log('Первоначальная загрузка данных');
-  with FmMain.ADOQuery do
+
+
+  // сохранить текущую версию
+  FLastVersion := GetCurrentVersion;
+  Log('Текущая транзакция: ' + IntToStr(FLastVersion));
+  FQuery.SQL.Clear;
+  // сначала объекты простым селектом
+  FQuery.SQL.Add('SELECT * FROM test_Object;');
+  FQuery.Active := True;
+  while not FQuery.Eof do
     begin
-      // сохранить текущую версию
-      FLastVersion := GetCurrentVersion;
-      Log('Текущая транзакция: ' + IntToStr(FLastVersion));
-      SQL.Clear;
-      // сначала объекты простым селектом
-      SQL.Add('SELECT * FROM test_Object;');
-      Active := True;
-      while not Eof do
-        begin
-          // добавить объект как узел дерева (без фокусировки, чтобы не мигало)
-          AddObject(FieldByName('id').AsInteger, FieldByName('name').AsString,
-                    FieldByName('comment').AsString);
-          Next;
-        end;
-      // а затем значения
-      SQL.Clear;
-      SQL.Add('SELECT * FROM test_ObjectValue;');
-      Active := True;
-      while not Eof do
-        begin
-          // добавить значение в дерево (без фокусировки)
-          AddValue(FieldByName('obj_id').AsInteger, FieldByName('date_time').AsDateTime,
-                   FieldByName('value1').AsInteger, FieldByName('value2').AsString,
-                   FieldByName('value3').AsFloat);
-          Next;
-        end;
-      Close;
+      // добавить объект как узел дерева (без фокусировки, чтобы не мигало)
+      AddObject(FQuery.Fields);
+      FQuery.Next;
     end;
+  // а затем значения
+  FQuery.SQL.Clear;
+  FQuery.SQL.Add('SELECT * FROM test_ObjectValue;');
+  FQuery.Active := True;
+  while not FQuery.Eof do
+    begin
+      // добавить значение в дерево (без фокусировки)
+      AddValue(FQuery.FieldByName('obj_id').AsInteger, FQuery.FieldByName('date_time').AsDateTime,
+               FQuery.FieldByName('value1').AsInteger, FQuery.FieldByName('value2').AsString,
+               FQuery.FieldByName('value3').AsFloat);
+      FQuery.Next;
+    end;
+
     Synchronize(procedure
       begin
         // показать номер транзакции

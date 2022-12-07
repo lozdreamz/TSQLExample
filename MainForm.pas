@@ -246,7 +246,7 @@ begin
   ConfigFile := TIniFile.Create(AppPath + 'config.ini');
   LogPath := AppPath + 'log.txt';
   l := TLogger.Create(LogPath);
-  t := TDataLoader.Create(0, l);
+  t := TDataLoader.Create(ADOQuery, 0, l);
   LoadConfig;
   ApplyConfig;
 end;
