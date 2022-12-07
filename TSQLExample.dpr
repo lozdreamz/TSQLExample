@@ -3,7 +3,7 @@ program TSQLExample;
 uses
   Vcl.Forms,
   MainForm in 'MainForm.pas' {FmMain},
-  Loader in 'Loader.pas';
+  DataLoader in 'DataLoader.pas';
 
 {$R *.res}
 

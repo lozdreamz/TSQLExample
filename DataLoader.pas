@@ -1,4 +1,4 @@
-﻿unit Loader;
+﻿unit DataLoader;
 
 interface
 
@@ -7,7 +7,7 @@ uses
   MainForm;
 
 type
-  TLoader = class(TThread)
+  TDataLoader = class(TThread)
   private
     // переменная для отслеживания изменений
     FLastVersion: Integer;
@@ -42,7 +42,7 @@ uses
 
 // добавление записи test_Object, полученной из базы, в дерево
 // параметры: поля id, name и comment объекта, нужно ли выделять
-procedure TLoader.AddObject(Id: Integer; Name, Comment: String; Select: Boolean = False);
+procedure TDataLoader.AddObject(Id: Integer; Name, Comment: String; Select: Boolean = False);
 var
   Data: PTreeNode;
   XNode: PVirtualNode;
@@ -65,7 +65,7 @@ end;
 
 // добавление записи test_ObjectValue, полученной из базы, в дерево
 // параметры: поля obj_id, date_time, value1..3 объекта, нужно ли выделять
-procedure TLoader.AddValue(ObjId: Integer; DT: TDateTime; Value1: Integer;
+procedure TDataLoader.AddValue(ObjId: Integer; DT: TDateTime; Value1: Integer;
   Value2: String; Value3: Double; Select: Boolean = False);
 var
   Data: PTreeNode;
@@ -110,7 +110,7 @@ begin
       Value2 + ', value3: ' + FloatToStr(Value3), False);
 end;
 
-constructor TLoader.Create(Interval: Cardinal; Logger: TLogger = nil);
+constructor TDataLoader.Create(Interval: Cardinal; Logger: TLogger = nil);
 begin
   inherited Create(False);
   FreeOnTerminate := True;
@@ -125,14 +125,14 @@ begin
   Log('Программа запущена');
 end;
 
-destructor TLoader.Destroy;
+destructor TDataLoader.Destroy;
 begin
   StartEvent.Free;
   UpdateEvent.Free;
   inherited;
 end;
 
-procedure TLoader.GetChanges;
+procedure TDataLoader.GetChanges;
 begin
   with FmMain.ADOQuery do
     begin
@@ -185,7 +185,7 @@ end;
 
 // получение текущей версии
 // возвращает: номер текущей версии
-function TLoader.GetCurrentVersion: Word;
+function TDataLoader.GetCurrentVersion: Word;
 begin
   with FmMain.ADOQuery do
     begin
@@ -199,7 +199,7 @@ begin
     end;
 end;
 
-procedure TLoader.GetInitialData;
+procedure TDataLoader.GetInitialData;
 begin
   FLogger.Log('--', False);
   FLogger.Log('Первоначальная загрузка данных');
@@ -240,13 +240,13 @@ begin
       end);
 end;
 
-procedure TLoader.Log(Text: String; SetTimeStamp: Boolean);
+procedure TDataLoader.Log(Text: String; SetTimeStamp: Boolean);
 begin
   if Assigned(FLogger) then
     FLogger.Log(Text, SetTimeStamp);
 end;
 
-procedure TLoader.Execute;
+procedure TDataLoader.Execute;
 begin
   {$IFDEF DEBUG}
     NameThreadForDebugging('SQL-Loader-Thread');
@@ -280,7 +280,7 @@ begin
 end;
 
 // установка интервала обновлений
-procedure TLoader.SetInterval(Value: Cardinal);
+procedure TDataLoader.SetInterval(Value: Cardinal);
 begin
   // в случае нуля - бесконечное ожидание
   if Value = 0 then

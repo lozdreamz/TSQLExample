@@ -98,10 +98,10 @@ implementation
 
 uses
   Vcl.Graphics, Vcl.Dialogs,
-  Loader;
+  DataLoader;
 
 var
-  t: TLoader;
+  t: TDataLoader;
   l: TLogger;
 
 {$R *.dfm}
@@ -246,7 +246,7 @@ begin
   ConfigFile := TIniFile.Create(AppPath + 'config.ini');
   LogPath := AppPath + 'log.txt';
   l := TLogger.Create(LogPath);
-  t := TLoader.Create(0, l);
+  t := TDataLoader.Create(0, l);
   LoadConfig;
   ApplyConfig;
 end;
