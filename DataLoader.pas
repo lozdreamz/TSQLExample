@@ -61,7 +61,7 @@ begin
       if Select then
         fmMain.vstree.Selected[XNode] := True;
     end);
-//    Log('Получен объект ' + IntTostr(Id) + ' - name: ' + Name + ', comment: ' + Comment);
+    Log('Получен объект ' + Data.Print);
 end;
 
 // добавление записи test_ObjectValue, полученной из базы, в дерево
@@ -106,10 +106,8 @@ begin
         FmMain.VSTree.Selected[XNode] := True;
     end);
   // write to log
-  Log('Получены даные для объекта ' + IntTostr(ObjId));
-  // second row with some tabs ahead
-//  Log(#9#9#9#9 + '[' + DateTimeToStr(DT) + '] value1: ' + IntToStr(Value1) + ', value2: ' +
-//      Value2 + ', value3: ' + FloatToStr(Value3), False);
+  Log('Получены даные для объекта [' + IntToStr(ObjId) + ']');
+  Log(#9#9#9#9#9 + Data.Print, False);
 end;
 
 constructor TDataLoader.Create(ADOQuery: TADOQuery; Interval: Cardinal; Logger: TLogger = nil);

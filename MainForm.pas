@@ -27,6 +27,7 @@ type
     Value1: Integer;
     Value2: String;
     Value3: Double;
+    function Print: string;
   end;
 
   TLogger = class
@@ -97,7 +98,7 @@ var
 implementation
 
 uses
-  Vcl.Graphics, Vcl.Dialogs,
+  System.UITypes, Vcl.Graphics, Vcl.Dialogs,
   DataLoader;
 
 var
@@ -365,7 +366,6 @@ end;
 
 procedure TLogger.Log(Text: String; SetTimeStamp: Boolean = True);
 var
-  TimeStamp: String;
   w: TStreamWriter;
 begin
    // divider
@@ -376,6 +376,20 @@ begin
    w := TStreamWriter.Create(FLogFileStream, TEncoding.UTF8);
    w.WriteLine(Text);
    w.Free;
+end;
+
+{ TTreeNode }
+
+// return a nicely printable representation of a node
+function TTreeNode.Print: string;
+begin
+  case NodeType of
+    ntObject:
+      Result := Format('[%u] name: %s, comment: %s', [Id, Name, Comment]);
+    ntObjectValue:
+      Result := Format('%u [%s] value1: %d, value2: %s, value3: %5.2f',
+                       [ObjectId, DateTimeToStr(DT), Value1, Value2, Value3]);
+  end;
 end;
 
 end.
