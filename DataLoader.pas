@@ -19,7 +19,7 @@ type
     function GetCurrentVersion: Word;
     // процедуры добавления записи, полученной из базы, в дерево
     procedure AddObject(F: TFields; Select: Boolean = False);
-    procedure AddValue(ObjId: Integer; DT: TDateTime; Value1: Integer; Value2: String; Value3: Double; Select: Boolean = False);
+    procedure AddValue(F: TFields; Select: Boolean = False);
     // процедуры первоначального и повтороного получения данных
     procedure GetInitialData;
     procedure GetChanges;
@@ -66,13 +66,14 @@ end;
 
 // добавление записи test_ObjectValue, полученной из базы, в дерево
 // параметры: поля obj_id, date_time, value1..3 объекта, нужно ли выделять
-procedure TDataLoader.AddValue(ObjId: Integer; DT: TDateTime; Value1: Integer;
-  Value2: String; Value3: Double; Select: Boolean = False);
+procedure TDataLoader.AddValue(F: TFields; Select: Boolean = False);
 var
   Data: PTreeNode;
   XNode: PVirtualNode;
   Node: PVirtualNode;
+  ObjId: Word;
 begin
+  ObjId := F.FieldByName('obj_id').AsInteger;
   // поиск узла по id объекта перебором
   Node := FmMain.VSTree.GetFirst;
   while Assigned(Node) do
@@ -94,10 +95,10 @@ begin
       // и заполнить его данными
       Data.NodeType := ntObjectValue;
       Data.ObjectId := ObjId;
-      Data.DT := DT;
-      Data.Value1 := Value1;
-      Data.Value2 := Value2;
-      Data.Value3 := Value3;
+      Data.DT := F.FieldByName('date_time').AsDateTime;
+      Data.Value1 := F.FieldByName('value1').AsInteger;
+      Data.Value2 := F.FieldByName('value2').AsString;
+      Data.Value3 := F.FieldByName('value3').AsFloat;
       // по дефолту узел свернут, развернуть
       FmMain.VSTree.Expanded[Node] := True;
       // и перевести фокус
@@ -107,8 +108,8 @@ begin
   // write to log
   Log('Получены даные для объекта ' + IntTostr(ObjId));
   // second row with some tabs ahead
-  Log(#9#9#9#9 + '[' + DateTimeToStr(DT) + '] value1: ' + IntToStr(Value1) + ', value2: ' +
-      Value2 + ', value3: ' + FloatToStr(Value3), False);
+//  Log(#9#9#9#9 + '[' + DateTimeToStr(DT) + '] value1: ' + IntToStr(Value1) + ', value2: ' +
+//      Value2 + ', value3: ' + FloatToStr(Value3), False);
 end;
 
 constructor TDataLoader.Create(ADOQuery: TADOQuery; Interval: Cardinal; Logger: TLogger = nil);
@@ -166,9 +167,7 @@ begin
       Active := True;
       while not Eof do
         begin
-          AddValue(FieldByName('obj_id').AsInteger, FieldByName('date_time').AsDateTime,
-                   FieldByName('value1').AsInteger, FieldByName('value2').AsString,
-                   FieldByName('value3').AsFloat, True);
+          AddValue(Fields, True);
           Next;
         end;
         Close;
@@ -199,8 +198,6 @@ procedure TDataLoader.GetInitialData;
 begin
   FLogger.Log('--', False);
   FLogger.Log('Первоначальная загрузка данных');
-
-
   // сохранить текущую версию
   FLastVersion := GetCurrentVersion;
   Log('Текущая транзакция: ' + IntToStr(FLastVersion));
@@ -221,12 +218,9 @@ begin
   while not FQuery.Eof do
     begin
       // добавить значение в дерево (без фокусировки)
-      AddValue(FQuery.FieldByName('obj_id').AsInteger, FQuery.FieldByName('date_time').AsDateTime,
-               FQuery.FieldByName('value1').AsInteger, FQuery.FieldByName('value2').AsString,
-               FQuery.FieldByName('value3').AsFloat);
+      AddValue(FQuery.Fields);
       FQuery.Next;
     end;
-
     Synchronize(procedure
       begin
         // показать номер транзакции
